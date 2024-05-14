@@ -1,8 +1,9 @@
-# Nós
+# Constantes do problema
 Módulo de Elasticidade: 200000000000
 Área da Seção Transversal: 0.00006
 Tensão Ruptura: 250000000
 
+# Lista das coordenadas dos nós [x, y]
 Nós:
 - [0, 0]
 - [0, 0.05]
@@ -21,6 +22,7 @@ Nós:
 - [0.05, 0.35]
 - [0, 0.4]
 
+# Lista dos elementos [nó1, nó2]
 Elementos:
 - [1, 2]
 - [1, 3]
@@ -52,11 +54,13 @@ Elementos:
 - [14, 16]
 - [15, 16]
 
+# Forças externas aplicadas aos nós [graus de liberdade, intensidade]
 Forças:
 - [14, -100]
 - [18, -100]
 - [22, -100]
 
+# Restrições nos graus de liberdade dos nós
 Restrições:
 - 1
 - 2

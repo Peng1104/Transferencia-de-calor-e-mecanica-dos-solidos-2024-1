@@ -1,7 +1,6 @@
-import matplotlib.pyplot as plt
 from typing import Any
 from math import sqrt
-from numpy import ndarray, floating, array, zeros, ix_, delete, dot, copy, inf, all
+from numpy import ndarray, floating, array, zeros, ix_, delete, dot, copy, diag
 from numpy.linalg import solve, norm
 import yaml
 
@@ -79,37 +78,47 @@ class Elemento:
         return True
 
 
-class Trelica:
+def gauss_seidel(K_restrito: ndarray, P_restrito: ndarray[floating[Any]], max_de_iteracoes=10000, tolerancia=1e-6) -> ndarray[floating[Any]]:
+    """
+    Método de Gauss-Seidel para resolver sistemas lineares
+    Parâmetros:
+        K_restrito (ndarray): Matriz de rigidez restrita
+        P_restrito (ndarray): Vetor de forças restrito
+        max_de_iteracoes (int): Número máximo de iterações
+        tolerancia (float): Tolerância para convergência
+    Retorna:
+        ndarray: Vetor de deslocamentos restrito
+    """
 
-    def __init__(self, elementos: list[Elemento]) -> None:
-        self.elementos = elementos
+    size = len(P_restrito)
+    U_restrito = zeros(size)
 
-        self.K = zeros((graus_liberdade, graus_liberdade))
-
-        for elemento in elementos:
-            self.K[ix_(elemento.graus_liberdade,
-                       elemento.graus_liberdade)] += elemento.rigidez
-
-def gauss_seidel(K_restrito, P_restrito, max_de_iteracoes=1000, tolerancia=1e-10):
-    U_restrito = zeros(len(P_restrito))
-    
     for _ in range(max_de_iteracoes):
-        U_novo = copy(U_restrito)
-        
-        for i in range(len(P_restrito)):
-            somatoria_1 = dot(K_restrito[i, :i], U_novo[:i])
-            somatoria_2 = dot(K_restrito[i, i+1:], U_restrito[i+1:])
+        U_antigo = copy(U_restrito)
+
+        for i in range(size):
+            # Calcula a somatória K[i, j] * U[j]
+            somatoria = dot(K_restrito[i, :], U_restrito)
+
+            # Calcula a diagonal (j == i)
+            diagonal = K_restrito[i, i] * U_restrito[i]
+
+            # Remove a diagonal (j != i)
+            somatoria -= diagonal
             
-            U_novo[i] = (P_restrito[i] - somatoria_1 - somatoria_2) / K_restrito[i, i]
+            if K_restrito[i, i] == 0:
+                raise ValueError("Divisão por zero")
+
+            U_restrito[i] = (P_restrito[i] - somatoria) / K_restrito[i, i]
         
         # Verifica se já convergiu
-        if norm(U_novo - U_restrito, ord=inf) < tolerancia:
-            return U_novo
-        
-        U_restrito = U_novo
-    
-    return U_restrito
+        norma = norm(U_restrito)
 
+        if norma > 0:
+            if abs(norm(U_restrito - U_antigo) / norma) <= tolerancia:
+                return U_restrito,norm(U_restrito - U_antigo) / norma
+
+    return U_restrito, norm(U_restrito - U_antigo) / norma
 
 nos: list[No] = []
 elementos: list[Elemento] = []
@@ -163,7 +172,6 @@ K_reduzido = delete(K_reduzido, restricoes, axis=1)
 
 P_reduzido = delete(P, restricoes)
 
-
 graus_de_liberdade_sem_restricoes = [
     x for x in array(range(graus_liberdade))-1 if x not in restricoes]
 
@@ -171,13 +179,18 @@ graus_de_liberdade_sem_restricoes.remove(-1)
 
 U = zeros(graus_liberdade)
 
-#U[ix_(graus_de_liberdade_sem_restricoes)] += solve(K_reduzido, P_reduzido)
-U[ix_(graus_de_liberdade_sem_restricoes)] += gauss_seidel(K_reduzido, P_reduzido)
+U_restrito, erro = gauss_seidel(K_reduzido, P_reduzido)
 
 print()
+print(f"Erro no Gauss-Seidel: {erro}")
 
-for s, g in zip(solve(K, P), gauss_seidel(K, P)):
-    print(s, g)
+#U[ix_(graus_de_liberdade_sem_restricoes)] += U_restrito
+U[ix_(graus_de_liberdade_sem_restricoes)] += solve(K_reduzido, P_reduzido)
+
+# print()
+
+# for s, g in zip(solve(K_reduzido, P_reduzido), U_restrito):
+#     print(f"Solve: {s} | Gauss-Seidel: {g}")
 
 P = dot(K, U)
 
